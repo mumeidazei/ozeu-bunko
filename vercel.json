@@ -3,14 +3,8 @@
     "pages/api/bunko.js": {
       "maxDuration": 10
     },
-    "pages/api/bunko/[id].js": {
+    "pages/api/bunko/*.js": {
       "maxDuration": 10
     }
-  },
-  "rewrites": [
-    {
-      "source": "/toukou",
-      "destination": "/toukou"
-    }
-  ]
+  }
 }
