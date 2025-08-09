@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "pages/api/bunko.js": {
+      "maxDuration": 10
+    },
+    "pages/api/bunko/[id].js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/toukou",
+      "destination": "/toukou"
+    }
+  ]
+}
