@@ -100,8 +100,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>文庫投稿サイト</title>
-        <meta name="description" content="シンプルな文庫投稿サイト" />
+        <title>ozeu文庫web</title>
+        <meta name="description" content="web版のおぜう文庫" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
