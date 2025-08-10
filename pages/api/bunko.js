@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     `;
 
     // クエリパラメータを取得
-    const { id, page = 1, limit = 50 } = req.query;
+    const { id, page, limit } = req.query;
     
     if (req.method === 'GET' && id) {
       // 個別の文庫取得
@@ -36,37 +36,48 @@ export default async function handler(req, res) {
       return res.status(200).json(rows[0]);
       
     } else if (req.method === 'GET') {
-      // ページネーション対応の文庫一覧取得
-      const pageNum = parseInt(page, 10) || 1;
-      const limitNum = parseInt(limit, 10) || 50;
-      const offset = (pageNum - 1) * limitNum;
-      
-      // 全件数を取得
-      const countResult = await sql`
-        SELECT COUNT(*) as total FROM bunko
-      `;
-      const totalCount = parseInt(countResult.rows[0].total, 10);
-      
-      // ページネーションでデータ取得
-      const { rows } = await sql`
-        SELECT * FROM bunko 
-        ORDER BY created_at DESC
-        LIMIT ${limitNum}
-        OFFSET ${offset}
-      `;
-      
-      // ページネーション情報を含めて返す
-      return res.status(200).json({
-        data: rows,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / limitNum),
-          hasNext: offset + limitNum < totalCount,
-          hasPrev: pageNum > 1
-        }
-      });
+      // ページネーションパラメータがある場合は新形式、ない場合は旧形式（後方互換）
+      if (page || limit) {
+        // 新形式: ページネーション対応
+        const pageNum = parseInt(page, 10) || 1;
+        const limitNum = parseInt(limit, 10) || 50;
+        const offset = (pageNum - 1) * limitNum;
+        
+        // 全件数を取得
+        const countResult = await sql`
+          SELECT COUNT(*) as total FROM bunko
+        `;
+        const totalCount = parseInt(countResult.rows[0].total, 10);
+        
+        // ページネーションでデータ取得
+        const { rows } = await sql`
+          SELECT * FROM bunko 
+          ORDER BY created_at DESC
+          LIMIT ${limitNum}
+          OFFSET ${offset}
+        `;
+        
+        // ページネーション情報を含めて返す
+        return res.status(200).json({
+          data: rows,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total: totalCount,
+            totalPages: Math.ceil(totalCount / limitNum),
+            hasNext: offset + limitNum < totalCount,
+            hasPrev: pageNum > 1
+          }
+        });
+      } else {
+        // 旧形式: 全件取得（後方互換性のため）
+        const { rows } = await sql`
+          SELECT * FROM bunko 
+          ORDER BY created_at DESC
+        `;
+        
+        return res.status(200).json(rows);
+      }
       
     } else if (req.method === 'POST') {
       // 文庫投稿（キー認証を削除）
