@@ -13,6 +13,12 @@ export default function Admin() {
   const [selectedBunko, setSelectedBunko] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', author: '', content: '' });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    hasNext: false,
+    total: 0
+  });
 
   useEffect(() => {
     // セッションチェック
@@ -53,13 +59,30 @@ export default function Admin() {
     }
   };
 
-  const loadBunkoList = async () => {
-    setLoading(true);
+  const loadBunkoList = async (page = 1, append = false) => {
+    if (!append) {
+      setLoading(true);
+    }
+    
     try {
-      const response = await fetch('/api/bunko');
+      const response = await fetch(`/api/bunko?page=${page}&limit=50`);
       if (response.ok) {
-        const data = await response.json();
-        setBunkoList(data);
+        const result = await response.json();
+        
+        if (append) {
+          setBunkoList(prev => [...prev, ...result.data]);
+        } else {
+          setBunkoList(result.data);
+        }
+        
+        setPagination(result.pagination);
+        
+        // 次のページがある場合は自動的に読み込む
+        if (result.pagination.hasNext) {
+          setTimeout(() => {
+            loadBunkoList(result.pagination.page + 1, true);
+          }, 200);
+        }
       }
     } catch (error) {
       console.error('Error loading bunko list:', error);
@@ -261,8 +284,8 @@ export default function Admin() {
         )}
 
         <div className={styles.bunkoTable}>
-          <h2>投稿一覧</h2>
-          {loading ? (
+          <h2>投稿一覧 {pagination.total > 0 && `(全${pagination.total}件)`}</h2>
+          {loading && bunkoList.length === 0 ? (
             <div className={styles.loading}>読み込み中...</div>
           ) : bunkoList.length === 0 ? (
             <div className={styles.emptyState}>投稿がありません</div>
