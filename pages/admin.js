@@ -259,11 +259,11 @@ export default function Admin() {
     return (
       <>
         <Head>
-          <title>管理画面 - ログイン</title>
+          <title>管理画面 - おぜう文庫</title>
         </Head>
         <div className={styles.container}>
           <div className={styles.loginBox}>
-            <h1 className={styles.title}>管理画面</h1>
+            <h1 className={styles.title}>おぜう文庫 管理画面</h1>
             {message.text && (
               <div className={`${styles.message} ${styles[message.type]}`}>
                 {message.text}
@@ -308,11 +308,11 @@ export default function Admin() {
   return (
     <>
       <Head>
-        <title>管理画面</title>
+        <title>管理画面 - おぜう文庫</title>
       </Head>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1 className={styles.title}>管理画面</h1>
+          <h1 className={styles.title}>おぜう文庫 管理画面</h1>
           <button onClick={handleLogout} className={styles.logoutBtn}>
             ログアウト
           </button>
@@ -412,14 +412,23 @@ export default function Admin() {
         )}
 
         <div className={styles.bunkoTable}>
-          <div className={styles.tableHeader}>
-            <h2>投稿一覧 {totalCount > 0 && `(全${totalCount}件)`}</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '15px', borderBottom: '1px solid #e0e0e0' }}>
+            <h2 style={{ margin: 0 }}>投稿一覧 {totalCount > 0 && `(全${totalCount}件)`}</h2>
             <button 
               onClick={() => setBulkDeleteMode(true)}
-              className={styles.bulkDeleteBtn}
+              style={{
+                padding: '10px 20px',
+                background: loading || bunkoList.length === 0 ? '#ccc' : '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: loading || bunkoList.length === 0 ? 'not-allowed' : 'pointer',
+                fontSize: '0.95em',
+                fontWeight: '500'
+              }}
               disabled={loading || bunkoList.length === 0}
             >
-              一括削除
+              指定ID以外を削除
             </button>
           </div>
           
