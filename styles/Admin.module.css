@@ -275,6 +275,128 @@
   flex: 1;
 }
 
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.tableHeader h2 {
+  margin: 0;
+}
+
+.bulkDeleteBtn {
+  padding: 10px 20px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: all 0.3s;
+}
+
+.bulkDeleteBtn:hover {
+  background: #c82333;
+}
+
+.bulkDeleteBtn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.bulkDeleteModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.bulkDeleteContent {
+  background: white;
+  width: 90%;
+  max-width: 500px;
+  padding: 30px;
+  border-radius: 10px;
+}
+
+.bulkDeleteContent h2 {
+  margin-bottom: 20px;
+  color: #dc3545;
+}
+
+.warning {
+  background: #fff3cd;
+  color: #856404;
+  padding: 12px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  border: 1px solid #ffeaa7;
+}
+
+.bulkDeleteContent .formGroup {
+  margin-bottom: 20px;
+}
+
+.bulkDeleteContent .formGroup label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.bulkDeleteContent .formGroup input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1em;
+}
+
+.bulkDeleteContent .formGroup small {
+  display: block;
+  margin-top: 5px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.dangerBtn {
+  flex: 1;
+  padding: 12px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.dangerBtn:hover {
+  background: #c82333;
+}
+
+.dangerBtn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.loadingMore {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  background: #f8f9fa;
+  margin-top: 10px;
+  border-radius: 5px;
+}
+
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
   .container {
