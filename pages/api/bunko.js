@@ -1,6 +1,16 @@
 import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
+  // CORS設定（ツール対応）
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // OPTIONSリクエストの処理
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   try {
     // テーブル作成（初回のみ実行される）
     await sql`
@@ -70,10 +80,12 @@ export default async function handler(req, res) {
           }
         });
       } else {
-        // 旧形式: 全件取得（後方互換性のため）
+        // 旧形式: 全件取得（後方互換性のため、ツール対応）
+        // 大量データの場合を考慮して制限を設ける
         const { rows } = await sql`
           SELECT * FROM bunko 
           ORDER BY created_at DESC
+          LIMIT 10000
         `;
         
         return res.status(200).json(rows);
