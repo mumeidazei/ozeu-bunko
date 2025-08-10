@@ -13,19 +13,16 @@ export default function Admin() {
   const [selectedBunko, setSelectedBunko] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', author: '', content: '' });
-  const [pagination, setPagination] = useState({
-    page: 1,
-    totalPages: 1,
-    hasNext: false,
-    total: 0
-  });
+  const [totalCount, setTotalCount] = useState(0);
+  const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+  const [keepIds, setKeepIds] = useState('');
 
   useEffect(() => {
     // セッションチェック
     const token = sessionStorage.getItem('adminToken');
     if (token === 'admin-authenticated') {
       setIsLoggedIn(true);
-      loadBunkoList();
+      loadAllBunko();
     }
   }, []);
 
@@ -47,7 +44,7 @@ export default function Admin() {
       if (response.ok && data.success) {
         sessionStorage.setItem('adminToken', 'admin-authenticated');
         setIsLoggedIn(true);
-        loadBunkoList();
+        loadAllBunko();
         showMessage('ログインしました', 'success');
       } else {
         showMessage('IDまたはパスワードが正しくありません', 'error');
@@ -59,33 +56,43 @@ export default function Admin() {
     }
   };
 
-  const loadBunkoList = async (page = 1, append = false) => {
-    if (!append) {
-      setLoading(true);
-    }
-    
+  const loadAllBunko = async () => {
+    setLoading(true);
+    setBunkoList([]);
+    let allData = [];
+    let page = 1;
+    let hasMore = true;
+
     try {
-      const response = await fetch(`/api/bunko?page=${page}&limit=50`);
-      if (response.ok) {
-        const result = await response.json();
-        
-        if (append) {
-          setBunkoList(prev => [...prev, ...result.data]);
+      // ページネーションで全件取得
+      while (hasMore) {
+        const response = await fetch(`/api/bunko?page=${page}&limit=100`);
+        if (response.ok) {
+          const result = await response.json();
+          allData = [...allData, ...result.data];
+          setTotalCount(result.pagination.total);
+          hasMore = result.pagination.hasNext;
+          page++;
+          
+          // 段階的に表示を更新
+          setBunkoList([...allData]);
         } else {
-          setBunkoList(result.data);
-        }
-        
-        setPagination(result.pagination);
-        
-        // 次のページがある場合は自動的に読み込む
-        if (result.pagination.hasNext) {
-          setTimeout(() => {
-            loadBunkoList(result.pagination.page + 1, true);
-          }, 200);
+          hasMore = false;
         }
       }
     } catch (error) {
       console.error('Error loading bunko list:', error);
+      // エラー時は旧形式で試す
+      try {
+        const response = await fetch('/api/bunko');
+        if (response.ok) {
+          const data = await response.json();
+          setBunkoList(data);
+          setTotalCount(data.length);
+        }
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+      }
     } finally {
       setLoading(false);
     }
@@ -105,12 +112,90 @@ export default function Admin() {
 
       if (response.ok) {
         showMessage('削除しました', 'success');
-        loadBunkoList();
+        // リストから削除
+        setBunkoList(prev => prev.filter(b => b.id !== id));
+        setTotalCount(prev => prev - 1);
       } else {
         showMessage('削除に失敗しました', 'error');
       }
     } catch (error) {
       showMessage('エラーが発生しました', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    // 入力値をパース（例: "1,2,3,4" → [1,2,3,4]）
+    const idsToKeep = keepIds
+      .split(',')
+      .map(id => parseInt(id.trim(), 10))
+      .filter(id => !isNaN(id));
+
+    if (idsToKeep.length === 0) {
+      showMessage('残すIDを入力してください', 'error');
+      return;
+    }
+
+    // 削除対象のIDリスト
+    const idsToDelete = bunkoList
+      .filter(bunko => !idsToKeep.includes(bunko.id))
+      .map(bunko => bunko.id);
+
+    if (idsToDelete.length === 0) {
+      showMessage('削除対象がありません', 'error');
+      return;
+    }
+
+    if (!confirm(`${idsToDelete.length}件の投稿を削除します。\n残すID: ${idsToKeep.join(', ')}\n本当に実行しますか？`)) {
+      return;
+    }
+
+    setLoading(true);
+    let deletedCount = 0;
+    let failedCount = 0;
+
+    try {
+      // 一つずつ削除（並列処理）
+      const deletePromises = idsToDelete.map(async (id) => {
+        try {
+          const response = await fetch(`/api/admin/bunko/${id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': 'admin-authenticated'
+            }
+          });
+          if (response.ok) {
+            deletedCount++;
+            return id;
+          } else {
+            failedCount++;
+            return null;
+          }
+        } catch (error) {
+          failedCount++;
+          return null;
+        }
+      });
+
+      const results = await Promise.all(deletePromises);
+      const successfullyDeleted = results.filter(id => id !== null);
+
+      // リストを更新
+      setBunkoList(prev => prev.filter(b => !successfullyDeleted.includes(b.id)));
+      setTotalCount(prev => prev - deletedCount);
+
+      if (failedCount > 0) {
+        showMessage(`${deletedCount}件削除、${failedCount}件失敗`, 'error');
+      } else {
+        showMessage(`${deletedCount}件削除しました`, 'success');
+      }
+
+      // フォームをリセット
+      setKeepIds('');
+      setBulkDeleteMode(false);
+    } catch (error) {
+      showMessage('一括削除中にエラーが発生しました', 'error');
     } finally {
       setLoading(false);
     }
@@ -141,10 +226,14 @@ export default function Admin() {
       });
 
       if (response.ok) {
+        const updatedBunko = await response.json();
         showMessage('更新しました', 'success');
         setEditMode(false);
         setSelectedBunko(null);
-        loadBunkoList();
+        // リストを更新
+        setBunkoList(prev => prev.map(b => 
+          b.id === selectedBunko.id ? updatedBunko : b
+        ));
       } else {
         showMessage('更新に失敗しました', 'error');
       }
@@ -283,48 +372,104 @@ export default function Admin() {
           </div>
         )}
 
+        {bulkDeleteMode && (
+          <div className={styles.bulkDeleteModal}>
+            <div className={styles.bulkDeleteContent}>
+              <h2>一括削除</h2>
+              <p className={styles.warning}>
+                ⚠️ 入力したID以外のすべての投稿が削除されます
+              </p>
+              <div className={styles.formGroup}>
+                <label>残すIDを入力（カンマ区切り）</label>
+                <input
+                  type="text"
+                  value={keepIds}
+                  onChange={(e) => setKeepIds(e.target.value)}
+                  placeholder="例: 1,2,3,4"
+                />
+                <small>現在の投稿ID範囲: {bunkoList.length > 0 ? `${Math.min(...bunkoList.map(b => b.id))} ～ ${Math.max(...bunkoList.map(b => b.id))}` : 'なし'}</small>
+              </div>
+              <div className={styles.buttonGroup}>
+                <button 
+                  onClick={handleBulkDelete}
+                  className={styles.dangerBtn}
+                  disabled={loading || !keepIds}
+                >
+                  {loading ? '削除中...' : '一括削除実行'}
+                </button>
+                <button 
+                  onClick={() => {
+                    setBulkDeleteMode(false);
+                    setKeepIds('');
+                  }}
+                  className={styles.cancelBtn}
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className={styles.bunkoTable}>
-          <h2>投稿一覧 {pagination.total > 0 && `(全${pagination.total}件)`}</h2>
+          <div className={styles.tableHeader}>
+            <h2>投稿一覧 {totalCount > 0 && `(全${totalCount}件)`}</h2>
+            <button 
+              onClick={() => setBulkDeleteMode(true)}
+              className={styles.bulkDeleteBtn}
+              disabled={loading || bunkoList.length === 0}
+            >
+              一括削除
+            </button>
+          </div>
+          
           {loading && bunkoList.length === 0 ? (
             <div className={styles.loading}>読み込み中...</div>
           ) : bunkoList.length === 0 ? (
             <div className={styles.emptyState}>投稿がありません</div>
           ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>タイトル</th>
-                  <th>作成者</th>
-                  <th>投稿日</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bunkoList.map((bunko) => (
-                  <tr key={bunko.id}>
-                    <td>{bunko.id}</td>
-                    <td>{bunko.title}</td>
-                    <td>{bunko.author}</td>
-                    <td>{new Date(bunko.created_at).toLocaleDateString('ja-JP')}</td>
-                    <td>
-                      <button 
-                        onClick={() => handleEdit(bunko)}
-                        className={styles.editBtn}
-                      >
-                        編集
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(bunko.id)}
-                        className={styles.deleteBtn}
-                      >
-                        削除
-                      </button>
-                    </td>
+            <>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>タイトル</th>
+                    <th>作成者</th>
+                    <th>投稿日</th>
+                    <th>操作</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {bunkoList.map((bunko) => (
+                    <tr key={bunko.id}>
+                      <td>{bunko.id}</td>
+                      <td>{bunko.title}</td>
+                      <td>{bunko.author}</td>
+                      <td>{new Date(bunko.created_at).toLocaleDateString('ja-JP')}</td>
+                      <td>
+                        <button 
+                          onClick={() => handleEdit(bunko)}
+                          className={styles.editBtn}
+                        >
+                          編集
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(bunko.id)}
+                          className={styles.deleteBtn}
+                        >
+                          削除
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {loading && bunkoList.length > 0 && (
+                <div className={styles.loadingMore}>
+                  追加データ読み込み中...
+                </div>
+              )}
+            </>
           )}
         </div>
 
