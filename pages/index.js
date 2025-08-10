@@ -100,13 +100,13 @@ export default function Home() {
     <>
       <Head>
         <title>おぜう文庫</title>
-        <meta name="description" content="おぜう文庫web版" />
+        <meta name="description" content="おぜう文庫のweb版" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       
       <div className={styles.container}>
-        <h1 className={styles.title}>文庫</h1>
+        <h1 className={styles.title}>おぜう文庫</h1>
         
         <nav className={styles.nav}>
           <a 
