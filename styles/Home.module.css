@@ -306,6 +306,23 @@
   font-size: 1em;
 }
 
+.totalCount {
+  text-align: center;
+  padding: 10px;
+  margin-bottom: 20px;
+  color: #666;
+  font-size: 0.95em;
+  background: #f8f9fa;
+  border-radius: 5px;
+}
+
+.loadingMore {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-size: 0.95em;
+}
+
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
   .container {
