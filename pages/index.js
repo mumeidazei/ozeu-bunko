@@ -11,8 +11,7 @@ export default function Home() {
   const [formData, setFormData] = useState({
     title: '',
     author: '',
-    content: '',
-    key: ''
+    content: ''
   });
 
   useEffect(() => {
@@ -37,7 +36,7 @@ export default function Home() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.author || !formData.content || !formData.key) {
+    if (!formData.title || !formData.author || !formData.content) {
       showMessage('すべての項目を入力してください', 'error');
       return;
     }
@@ -60,7 +59,7 @@ export default function Home() {
       }
 
       showMessage('投稿が完了しました', 'success');
-      setFormData({ title: '', author: '', content: '', key: '' });
+      setFormData({ title: '', author: '', content: '' });
       
       setTimeout(() => {
         setView('home');
@@ -100,8 +99,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>ozeu文庫web</title>
-        <meta name="description" content="web版のおぜう文庫" />
+        <title>おぜう文庫</title>
+        <meta name="description" content="おぜう文庫web版" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -189,18 +188,6 @@ export default function Home() {
                   id="content"
                   name="content"
                   value={formData.content}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className={styles.formGroup}>
-                <label htmlFor="key">投稿キー</label>
-                <input
-                  type="password"
-                  id="key"
-                  name="key"
-                  value={formData.key}
                   onChange={handleInputChange}
                   required
                 />
