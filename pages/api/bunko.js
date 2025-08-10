@@ -13,7 +13,29 @@ export default async function handler(req, res) {
       )
     `;
 
-    if (req.method === 'GET') {
+    // クエリパラメータでIDが指定されている場合は個別取得
+    const { id } = req.query;
+    
+    if (req.method === 'GET' && id) {
+      // 個別の文庫取得
+      const numericId = parseInt(id, 10);
+      if (isNaN(numericId)) {
+        return res.status(400).json({ error: '無効なIDです' });
+      }
+
+      const { rows } = await sql`
+        SELECT * FROM bunko 
+        WHERE id = ${numericId}
+        LIMIT 1
+      `;
+      
+      if (rows.length === 0) {
+        return res.status(404).json({ error: '文庫が見つかりません' });
+      }
+      
+      return res.status(200).json(rows[0]);
+      
+    } else if (req.method === 'GET') {
       // 文庫一覧取得
       const { rows } = await sql`
         SELECT * FROM bunko 
@@ -24,14 +46,8 @@ export default async function handler(req, res) {
       return res.status(200).json(rows);
       
     } else if (req.method === 'POST') {
-      // 文庫投稿
-      const { title, author, content, key } = req.body;
-      
-      // キーの検証
-      const validKey = process.env.POST_KEY || 'omnkdaifugou';
-      if (key !== validKey) {
-        return res.status(403).json({ error: '投稿キーが正しくありません' });
-      }
+      // 文庫投稿（キー認証を削除）
+      const { title, author, content } = req.body;
       
       // 入力検証
       if (!title || !author || !content) {
