@@ -1,5 +1,25 @@
 import { sql } from '@vercel/postgres';
 
+// 停止状態をチェックする関数
+async function checkIfPaused() {
+  try {
+    // データベースから停止状態を取得
+    const result = await sql`
+      SELECT value FROM site_settings 
+      WHERE key = 'posting_paused'
+      LIMIT 1
+    `;
+    
+    if (result.rows.length > 0) {
+      return result.rows[0].value === 'true';
+    }
+    return false;
+  } catch (error) {
+    // テーブルが存在しない場合は停止していないとみなす
+    return false;
+  }
+}
+
 export default async function handler(req, res) {
   // CORS設定（ツール対応）
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,7 +44,7 @@ export default async function handler(req, res) {
     `;
 
     // クエリパラメータを取得
-    const { id, page, limit } = req.query;
+    const { id, page, limit, all } = req.query;
     
     if (req.method === 'GET' && id) {
       // 個別の文庫取得
@@ -46,52 +66,87 @@ export default async function handler(req, res) {
       return res.status(200).json(rows[0]);
       
     } else if (req.method === 'GET') {
-      // ページネーションパラメータがある場合は新形式、ない場合は旧形式（後方互換）
-      if (page || limit) {
-        // 新形式: ページネーション対応
-        const pageNum = parseInt(page, 10) || 1;
-        const limitNum = parseInt(limit, 10) || 50;
-        const offset = (pageNum - 1) * limitNum;
-        
-        // 全件数を取得
-        const countResult = await sql`
-          SELECT COUNT(*) as total FROM bunko
-        `;
-        const totalCount = parseInt(countResult.rows[0].total, 10);
-        
-        // ページネーションでデータ取得
+      // 全件取得モード（all=trueまたはページネーションなし）
+      if (all === 'true' || (!page && !limit)) {
+        // 全件取得（制限なし）
         const { rows } = await sql`
           SELECT * FROM bunko 
           ORDER BY created_at DESC
-          LIMIT ${limitNum}
-          OFFSET ${offset}
         `;
         
-        // ページネーション情報を含めて返す
-        return res.status(200).json({
-          data: rows,
-          pagination: {
-            page: pageNum,
-            limit: limitNum,
-            total: totalCount,
-            totalPages: Math.ceil(totalCount / limitNum),
-            hasNext: offset + limitNum < totalCount,
-            hasPrev: pageNum > 1
-          }
-        });
-      } else {
-        // 旧形式: 全件取得（後方互換性のため、ツール対応）
-        // 大量データの場合を考慮して制限を設ける
-        const { rows } = await sql`
-          SELECT * FROM bunko 
-          ORDER BY created_at DESC
-          LIMIT 10000
-        `;
+        // allパラメータがある場合は、件数情報も含める
+        if (all === 'true') {
+          return res.status(200).json({
+            data: rows,
+            total: rows.length,
+            message: `全${rows.length}件を取得しました`
+          });
+        }
         
+        // 旧形式（配列のみ）
         return res.status(200).json(rows);
       }
       
+      // ページネーション対応
+      const pageNum = parseInt(page, 10) || 1;
+      const limitNum = parseInt(limit, 10) || 50;
+      const offset = (pageNum - 1) * limitNum;
+      
+      // 全件数を取得
+      const countResult = await sql`
+        SELECT COUNT(*) as total FROM bunko
+      `;
+      const totalCount = parseInt(countResult.rows[0].total, 10);
+      
+      // ページネーションでデータ取得
+      const { rows } = await sql`
+        SELECT * FROM bunko 
+        ORDER BY created_at DESC
+        LIMIT ${limitNum}
+        OFFSET ${offset}
+      `;
+      
+      // ページネーション情報を含めて返す
+      return res.status(200).json({
+        data: rows,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: totalCount,
+          totalPages: Math.ceil(totalCount / limitNum),
+          hasNext: offset + limitNum < totalCount,
+          hasPrev: pageNum > 1
+        }
+      });
+      
+      
     } else if (req.method === 'POST') {
+      // 停止状態をチェック
+      const isPaused = await checkIfPaused();
+      if (isPaused) {
+        // 停止理由を取得
+        let reason = 'メンテナンス中';
+        try {
+          const reasonResult = await sql`
+            SELECT value FROM site_settings 
+            WHERE key = 'pause_reason'
+            LIMIT 1
+          `;
+          if (reasonResult.rows.length > 0 && reasonResult.rows[0].value) {
+            reason = reasonResult.rows[0].value;
+          }
+        } catch (e) {
+          // エラーは無視
+        }
+        
+        return res.status(503).json({ 
+          error: '投稿は一時停止中です',
+          reason: reason,
+          isPaused: true,
+          message: '現在、投稿機能を一時停止しています。しばらくお待ちください。'
+        });
+      }
+      
       // 文庫投稿（キー認証を削除）
       const { title, author, content } = req.body;
       
