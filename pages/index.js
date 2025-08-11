@@ -101,6 +101,11 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
+        // 503エラー（一時停止中）の場合
+        if (response.status === 503) {
+          showMessage(data.message || '投稿機能は一時停止中です', 'error');
+          return;
+        }
         throw new Error(data.error || '投稿に失敗しました');
       }
 
@@ -148,7 +153,7 @@ export default function Home() {
     <>
       <Head>
         <title>おぜう文庫</title>
-        <meta name="description" content="おぜう文庫" />
+        <meta name="description" content="おぜう文庫 - みんなで作る文庫投稿サイト" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
